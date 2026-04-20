@@ -10,6 +10,7 @@
 <title>Tesla Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -193,6 +194,29 @@
   .b-future  { background: rgba(107,107,128,0.2); color: var(--muted); }
   .b-neutral { background: rgba(74,158,255,0.15); color: var(--accent); }
 
+  /* LOGIN SCREEN */
+  .login-screen {
+    position: fixed; inset: 0; background: var(--bg); z-index: 300;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 32px; padding: 40px;
+  }
+  .login-screen.hidden { display: none; }
+  .login-logo { text-align: center; }
+  .login-logo-tag { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 4px; color: var(--red); text-transform: uppercase; margin-bottom: 8px; }
+  .login-logo-title { font-size: 42px; font-weight: 700; letter-spacing: 3px; }
+  .login-logo-sub { font-size: 14px; color: var(--muted); margin-top: 6px; letter-spacing: 1px; }
+  .login-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 36px 40px; width: 100%; max-width: 400px; text-align: center; }
+  .login-card-title { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 24px; }
+  .btn-google { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 14px 24px; background: #fff; color: #1a1a1a; border: none; border-radius: 3px; font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+  .btn-google:hover { background: #f0f0f0; box-shadow: 0 0 20px rgba(255,255,255,0.1); transform: translateY(-1px); }
+  .login-note { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; line-height: 1.8; margin-top: 20px; }
+  .user-badge { display: flex; align-items: center; gap: 10px; background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.2); border-radius: 2px; padding: 6px 12px; }
+  .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #0a0a0f; overflow: hidden; }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-name { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 1px; }
+  .btn-logout { background: none; border: none; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 10px; cursor: pointer; letter-spacing: 1px; padding: 2px 6px; transition: color 0.2s; }
+  .btn-logout:hover { color: var(--red); }
+
   /* LOADING OVERLAY */
   .loading-overlay {
     position: fixed; inset: 0; background: var(--bg); z-index: 200;
@@ -231,6 +255,23 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-logo">
+    <div class="login-logo-tag">Tesla Leasing</div>
+    <div class="login-logo-title">TESLA<span style="color:var(--red)">.</span>KM</div>
+    <div class="login-logo-sub">Suivi kilométrique · Synchronisé dans le cloud</div>
+  </div>
+  <div class="login-card">
+    <div class="login-card-title">Connexion requise</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuer avec Google
+    </button>
+    <div class="login-note">Tes données sont privées et liées<br>uniquement à ton compte Google.</div>
+  </div>
+</div>
+
 <!-- LOADING -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-logo">TESLA<span>.</span>KM</div>
@@ -255,6 +296,11 @@
     <div class="header-right">
       <div class="date-now">AUJOURD'HUI<br><strong id="todayDisplay">--</strong></div>
       <div class="header-btns">
+        <div class="user-badge" id="userBadge" style="display:none">
+          <div class="user-avatar" id="userAvatar">J</div>
+          <span class="user-name" id="userName">--</span>
+          <button class="btn-logout" onclick="signOut()">DÉCONNEXION</button>
+        </div>
         <div class="sync-indicator">
           <div class="sync-dot" id="syncDot"></div>
           <span id="syncLabel">--</span>
@@ -427,11 +473,15 @@
 
 <script>
 // ============================================================
-// CONFIG SUPABASE
+// CONFIG SUPABASE + AUTH
 // ============================================================
 var SUPABASE_URL = 'https://shvudefpkgyukkmhptgk.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNodnVkZWZwa2d5dWtrbWhwdGdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NzkwNTYsImV4cCI6MjA5MjI1NTA1Nn0.mWk5i1vJ_XuMIp_UaLSXSwd7CbQiL8xPhJyMpJOwhe4';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNodnVkZWZwa2d5dWtrbWhwdGdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NzkwNTYsImV4cCI6MjA5MjI1NTA1Nn0.mWk5i1vJ_XuMIp_UaLSXSwd7CbQiL8xPhJyMpJOwhe4';
 var TABLE = 'km_entries';
+
+// Init Supabase client
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var currentUser = null;
 
 // ============================================================
 // STATE
@@ -449,42 +499,73 @@ var isSyncing  = false;
 var LS_KEY = 'tesla_tracker_v3';
 
 // ============================================================
-// SUPABASE API HELPERS
+// AUTH FUNCTIONS
 // ============================================================
-function sbHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Prefer': 'return=representation'
-  };
+async function signInWithGoogle() {
+  var { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) showToast('Erreur de connexion : ' + error.message, true);
 }
 
-async function sbFetch(path, opts) {
-  var res = await fetch(SUPABASE_URL + '/rest/v1/' + path, Object.assign({ headers: sbHeaders() }, opts));
-  if (!res.ok) {
-    var err = await res.text();
-    throw new Error('Supabase error ' + res.status + ': ' + err);
-  }
-  var ct = res.headers.get('content-type') || '';
-  return ct.includes('json') ? res.json() : [];
-}
-
-async function loadFromSupabase() {
-  var data = await sbFetch(TABLE + '?select=month_key,compteur_km&order=month_key.asc');
+async function signOut() {
+  await supabase.auth.signOut();
+  currentUser = null;
   monthlyKm = {};
-  data.forEach(function(row) { monthlyKm[row.month_key] = row.compteur_km; });
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+function hideLoginScreen() {
+  document.getElementById('loginScreen').classList.add('hidden');
+}
+
+function updateUserUI(user) {
+  var badge  = document.getElementById('userBadge');
+  var avatar = document.getElementById('userAvatar');
+  var name   = document.getElementById('userName');
+  if (user) {
+    badge.style.display = 'flex';
+    var initial = (user.user_metadata.full_name || user.email || 'U')[0].toUpperCase();
+    if (user.user_metadata.avatar_url) {
+      avatar.innerHTML = '<img src="' + user.user_metadata.avatar_url + '" alt="avatar">';
+    } else {
+      avatar.textContent = initial;
+    }
+    name.textContent = user.user_metadata.full_name || user.email;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ============================================================
+// SUPABASE DATA FUNCTIONS (auth-aware)
+// ============================================================
+async function loadFromSupabase() {
+  var { data, error } = await supabase
+    .from(TABLE)
+    .select('month_key, compteur_km')
+    .order('month_key', { ascending: true });
+  if (error) throw error;
+  monthlyKm = {};
+  (data || []).forEach(function(row) { monthlyKm[row.month_key] = row.compteur_km; });
 }
 
 async function upsertEntry(monthKey, compteurKm) {
-  await sbFetch(TABLE + '?on_conflict=month_key', {
-    method: 'POST',
-    body: JSON.stringify({ month_key: monthKey, compteur_km: compteurKm, updated_at: new Date().toISOString() })
-  });
+  var { error } = await supabase.from(TABLE).upsert(
+    { month_key: monthKey, compteur_km: compteurKm, updated_at: new Date().toISOString() },
+    { onConflict: 'month_key' }
+  );
+  if (error) throw error;
 }
 
 async function deleteEntry(monthKey) {
-  await sbFetch(TABLE + '?month_key=eq.' + monthKey, { method: 'DELETE' });
+  var { error } = await supabase.from(TABLE).delete().eq('month_key', monthKey);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -568,7 +649,7 @@ function exportData() {
 }
 
 async function forcSync() {
-  if (isSyncing || !isOnline) return;
+  if (isSyncing || !isOnline || !currentUser) return;
   isSyncing = true;
   setSyncStatus('syncing', 'SYNC...');
   try {
@@ -700,7 +781,7 @@ async function saveEntry() {
   refresh();
 
   // Sync to Supabase
-  if (isOnline) {
+  if (isOnline && currentUser) {
     setSyncStatus('syncing', 'SYNC...');
     try {
       await upsertEntry(k, compteur);
@@ -957,39 +1038,53 @@ function refresh() {
 async function init() {
   var loadTxt = document.getElementById('loadingTxt');
 
-  // 1. Load local first for instant display
-  loadLocal();
-  refresh();
+  // Listen for auth state changes
+  supabase.auth.onAuthStateChange(async function(event, session) {
+    if (session && session.user) {
+      currentUser = session.user;
+      updateUserUI(currentUser);
+      hideLoginScreen();
 
-  // 2. Try Supabase
-  if (isOnline) {
-    loadTxt.textContent = 'CONNEXION À SUPABASE...';
-    setSyncStatus('syncing', 'CONNEXION...');
-    try {
-      await loadFromSupabase();
-      saveLocal();
-      updateLastSync();
-      setSyncStatus('online', 'SYNCHRONISÉ');
-      loadTxt.textContent = 'DONNÉES CHARGÉES ✓';
+      // Load data
+      loadTxt.textContent = 'CHARGEMENT DES DONNÉES...';
+      setSyncStatus('syncing', 'CONNEXION...');
+      loadLocal();
       refresh();
-    } catch(e) {
-      setSyncStatus('error', 'ERREUR SYNC');
-      loadTxt.textContent = 'DONNÉES LOCALES (SYNC ÉCHOUÉE)';
-      showToast('Connexion Supabase échouée — données locales utilisées', true);
+
+      if (isOnline) {
+        try {
+          await loadFromSupabase();
+          saveLocal();
+          updateLastSync();
+          setSyncStatus('online', 'SYNCHRONISÉ');
+          loadTxt.textContent = 'DONNÉES CHARGÉES ✓';
+          refresh();
+        } catch(e) {
+          setSyncStatus('error', 'ERREUR SYNC');
+          loadTxt.textContent = 'DONNÉES LOCALES';
+        }
+      } else {
+        setSyncStatus('error', 'HORS LIGNE');
+        document.getElementById('offlineBanner').classList.add('show');
+      }
+
+      // Hide loading
+      setTimeout(function(){
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
+      }, 600);
+
+    } else {
+      // Not logged in — show login screen
+      currentUser = null;
+      updateUserUI(null);
+      document.getElementById('loadingOverlay').classList.add('hidden');
+      setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
+      showLoginScreen();
     }
-  } else {
-    setSyncStatus('error', 'HORS LIGNE');
-    document.getElementById('offlineBanner').classList.add('show');
-    loadTxt.textContent = 'MODE HORS LIGNE';
-  }
+  });
 
-  // Hide loading after short delay
-  setTimeout(function(){
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
-  }, 800);
-
-  // Auto-sync every 5 minutes
+  // Auto-sync every 5 min
   setInterval(forcSync, 5 * 60 * 1000);
 }
 
