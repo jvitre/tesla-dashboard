@@ -504,7 +504,7 @@ var LS_KEY = 'tesla_tracker_v3';
 async function signInWithGoogle() {
   var { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: 'https://jvitre.github.io/tesla-dashboard/' }
+    options: { redirectTo: 'https://effortless-torte-8d4e81.netlify.app/' }
   });
   if (error) showToast('Erreur de connexion : ' + error.message, true);
 }
