@@ -1038,6 +1038,19 @@ function refresh() {
 async function init() {
   var loadTxt = document.getElementById('loadingTxt');
 
+  // Gestion explicite du callback OAuth (hash dans l'URL)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    loadTxt.textContent = 'AUTHENTIFICATION EN COURS...';
+    try {
+      var { data, error } = await supabase.auth.getSessionFromUrl({ reloadSession: true });
+      if (error) throw error;
+      // Nettoie l'URL sans recharger la page
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch(e) {
+      console.error('OAuth callback error:', e);
+    }
+  }
+
   // Listen for auth state changes
   supabase.auth.onAuthStateChange(async function(event, session) {
     if (session && session.user) {
