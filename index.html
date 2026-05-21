@@ -1035,67 +1035,62 @@ function refresh() {
 // ============================================================
 // INIT
 // ============================================================
-async function init() {
+async function handleSession(session) {
   var loadTxt = document.getElementById('loadingTxt');
-
-  // Gestion explicite du callback OAuth (hash dans l'URL)
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    loadTxt.textContent = 'AUTHENTIFICATION EN COURS...';
-    try {
-      var { data, error } = await supabase.auth.getSessionFromUrl({ reloadSession: true });
-      if (error) throw error;
-      // Nettoie l'URL sans recharger la page
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch(e) {
-      console.error('OAuth callback error:', e);
-    }
-  }
-
-  // Listen for auth state changes
-  supabase.auth.onAuthStateChange(async function(event, session) {
-    if (session && session.user) {
-      currentUser = session.user;
-      updateUserUI(currentUser);
-      hideLoginScreen();
-
-      // Load data
-      loadTxt.textContent = 'CHARGEMENT DES DONNÉES...';
-      setSyncStatus('syncing', 'CONNEXION...');
-      loadLocal();
-      refresh();
-
-      if (isOnline) {
-        try {
-          await loadFromSupabase();
-          saveLocal();
-          updateLastSync();
-          setSyncStatus('online', 'SYNCHRONISÉ');
-          loadTxt.textContent = 'DONNÉES CHARGÉES ✓';
-          refresh();
-        } catch(e) {
-          setSyncStatus('error', 'ERREUR SYNC');
-          loadTxt.textContent = 'DONNÉES LOCALES';
-        }
-      } else {
-        setSyncStatus('error', 'HORS LIGNE');
-        document.getElementById('offlineBanner').classList.add('show');
+  if (session && session.user) {
+    currentUser = session.user;
+    updateUserUI(currentUser);
+    hideLoginScreen();
+    loadTxt.textContent = 'CHARGEMENT DES DONNÉES...';
+    setSyncStatus('syncing', 'CONNEXION...');
+    loadLocal();
+    refresh();
+    if (isOnline) {
+      try {
+        await loadFromSupabase();
+        saveLocal();
+        updateLastSync();
+        setSyncStatus('online', 'SYNCHRONISÉ');
+        loadTxt.textContent = 'DONNÉES CHARGÉES ✓';
+        refresh();
+      } catch(e) {
+        setSyncStatus('error', 'ERREUR SYNC');
+        loadTxt.textContent = 'DONNÉES LOCALES';
       }
-
-      // Hide loading
-      setTimeout(function(){
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
-      }, 600);
-
     } else {
-      // Not logged in — show login screen
-      currentUser = null;
-      updateUserUI(null);
+      setSyncStatus('error', 'HORS LIGNE');
+      document.getElementById('offlineBanner').classList.add('show');
+    }
+    setTimeout(function(){
       document.getElementById('loadingOverlay').classList.add('hidden');
       setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
-      showLoginScreen();
-    }
+    }, 600);
+  } else {
+    currentUser = null;
+    updateUserUI(null);
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
+    showLoginScreen();
+  }
+}
+
+async function init() {
+  // Nettoie l'URL si callback OAuth
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // Écoute les changements d'auth (gère aussi le callback OAuth automatiquement)
+  supabase.auth.onAuthStateChange(async function(event, session) {
+    console.log('Auth event:', event, session ? 'session ok' : 'no session');
+    await handleSession(session);
   });
+
+  // Vérifie la session existante au démarrage
+  var { data } = await supabase.auth.getSession();
+  if (data && data.session) {
+    await handleSession(data.session);
+  }
 
   // Auto-sync every 5 min
   setInterval(forcSync, 5 * 60 * 1000);
