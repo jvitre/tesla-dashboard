@@ -1035,8 +1035,15 @@ function refresh() {
 // ============================================================
 // INIT
 // ============================================================
+var sessionHandled = false;
+
 async function handleSession(session) {
+  if (sessionHandled) return;
+  sessionHandled = true;
+
   var loadTxt = document.getElementById('loadingTxt');
+  var overlay  = document.getElementById('loadingOverlay');
+
   if (session && session.user) {
     currentUser = session.user;
     updateUserUI(currentUser);
@@ -1051,48 +1058,50 @@ async function handleSession(session) {
         saveLocal();
         updateLastSync();
         setSyncStatus('online', 'SYNCHRONISÉ');
-        loadTxt.textContent = 'DONNÉES CHARGÉES ✓';
         refresh();
       } catch(e) {
         setSyncStatus('error', 'ERREUR SYNC');
-        loadTxt.textContent = 'DONNÉES LOCALES';
       }
     } else {
       setSyncStatus('error', 'HORS LIGNE');
       document.getElementById('offlineBanner').classList.add('show');
     }
-    setTimeout(function(){
-      document.getElementById('loadingOverlay').classList.add('hidden');
-      setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
-    }, 600);
   } else {
     currentUser = null;
     updateUserUI(null);
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    setTimeout(function(){ document.getElementById('loadingOverlay').style.display = 'none'; }, 400);
     showLoginScreen();
   }
+
+  // Force hide loading
+  overlay.style.display = 'none';
 }
 
 async function init() {
-  // Nettoie l'URL si callback OAuth
   if (window.location.hash && window.location.hash.includes('access_token')) {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  // Écoute les changements d'auth (gère aussi le callback OAuth automatiquement)
   supabase.auth.onAuthStateChange(async function(event, session) {
-    console.log('Auth event:', event, session ? 'session ok' : 'no session');
-    await handleSession(session);
+    console.log('Auth event:', event);
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      await handleSession(session);
+    } else if (event === 'SIGNED_OUT') {
+      sessionHandled = false;
+      currentUser = null;
+      updateUserUI(null);
+      document.getElementById('loadingOverlay').style.display = 'none';
+      showLoginScreen();
+    }
   });
 
-  // Vérifie la session existante au démarrage
-  var { data } = await supabase.auth.getSession();
-  if (data && data.session) {
-    await handleSession(data.session);
-  }
+  // Fallback si onAuthStateChange ne se déclenche pas
+  setTimeout(async function() {
+    if (!sessionHandled) {
+      var { data } = await supabase.auth.getSession();
+      await handleSession(data ? data.session : null);
+    }
+  }, 3000);
 
-  // Auto-sync every 5 min
   setInterval(forcSync, 5 * 60 * 1000);
 }
 
