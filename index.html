@@ -189,40 +189,7 @@
     </div>
   </header>
 
-  <!-- CONFIG -->
-  <div class="panel">
-    <div class="panel-title">Configuration du contrat</div>
-    <div class="row-fields">
-      <div class="field" style="max-width:180px">
-        <div class="field-label">Date de début</div>
-        <input class="field-input" type="date" id="cfgStart" value="2024-09-09">
-      </div>
-      <div class="field" style="max-width:140px">
-        <div class="field-label">Durée (années)</div>
-        <input class="field-input" type="number" id="cfgDuration" value="4" min="1" max="10">
-      </div>
-      <div class="field" style="max-width:160px">
-        <div class="field-label">KM / an autorisés</div>
-        <input class="field-input" type="number" id="cfgKmYear" value="20000" min="1000">
-      </div>
-    </div>
-  </div>
-
-  <!-- PENALTY -->
-  <div class="panel penalty-panel">
-    <div class="panel-title">Coût de dépassement</div>
-    <div class="row-fields">
-      <div class="field" style="max-width:200px">
-        <div class="field-label">Pénalité / km dépassé (€)</div>
-        <input class="field-input" type="number" id="cfgPenalty" value="0.08" step="0.01" min="0">
-      </div>
-      <div style="display:flex;align-items:flex-end;padding-bottom:2px">
-        <span id="penaltyInfo" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">Entrez vos km pour calculer</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- SAISIE PAR DATE -->
+  <!-- SAISIE PAR DATE — EN PREMIER -->
   <div class="panel entry-panel">
     <div class="panel-title">Saisie du compteur</div>
     <div class="row-fields">
@@ -334,6 +301,45 @@
       </thead>
       <tbody id="tBody"></tbody>
     </table>
+  </div>
+
+  <!-- CONFIG — EN BAS, REPLIABLE -->
+  <div style="margin-bottom:20px">
+    <button onclick="toggleConfig()" class="btn btn-ghost btn-sm" id="btnToggleConfig" style="width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;">
+      <span>⚙ PARAMÈTRES DU CONTRAT</span>
+      <span id="cfgArrow">▼</span>
+    </button>
+    <div id="cfgPanel" style="display:none;margin-top:8px;">
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-title">Configuration du contrat</div>
+        <div class="row-fields">
+          <div class="field" style="max-width:180px">
+            <div class="field-label">Date de début</div>
+            <input class="field-input" type="date" id="cfgStart" value="2024-09-09">
+          </div>
+          <div class="field" style="max-width:140px">
+            <div class="field-label">Durée (années)</div>
+            <input class="field-input" type="number" id="cfgDuration" value="4" min="1" max="10">
+          </div>
+          <div class="field" style="max-width:160px">
+            <div class="field-label">KM / an autorisés</div>
+            <input class="field-input" type="number" id="cfgKmYear" value="20000" min="1000">
+          </div>
+        </div>
+      </div>
+      <div class="panel penalty-panel">
+        <div class="panel-title">Coût de dépassement</div>
+        <div class="row-fields">
+          <div class="field" style="max-width:200px">
+            <div class="field-label">Pénalité / km dépassé (€)</div>
+            <input class="field-input" type="number" id="cfgPenalty" value="0.08" step="0.01" min="0">
+          </div>
+          <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+            <span id="penaltyInfo" style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">Entrez vos km pour calculer</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer>TESLA KM V5 &bull; <span id="footerYear">2025</span> &bull; Sync Supabase &bull; <span id="lastSyncDisplay">jamais synchronisé</span></footer>
@@ -807,6 +813,14 @@ function refresh() {
   buildChips();
   onEntryDateChange();
   updateChart(c, endDate, totalKm);
+}
+
+function toggleConfig() {
+  var panel = document.getElementById('cfgPanel');
+  var arrow = document.getElementById('cfgArrow');
+  var open  = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  arrow.textContent   = open ? '▲' : '▼';
 }
 
 // Config listeners
