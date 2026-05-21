@@ -100,35 +100,40 @@ exports.handler = async function(event) {
     }
     console.log('[TeslaKM] Token rafraîchi ✓');
 
-    // ---- 2. Récupération des véhicules ----
-    const vehicles = await httpsGet('owner-api.teslamotors.com', '/api/1/vehicles', auth.access_token);
+    // ---- 2. Récupération des véhicules (endpoint EU) ----
+    let vehicles = await httpsGet('owner-api.teslamotors.com', '/api/1/vehicles', auth.access_token);
+    
+    // Si pas de véhicule, essai avec l'endpoint EU Fleet
     if (!vehicles.response || !vehicles.response.length) {
-      console.error('[TeslaKM] Aucun véhicule trouvé');
-      return { statusCode: 500, body: JSON.stringify({ error: 'No vehicles found' }) };
+      console.log('[TeslaKM] Essai endpoint EU...');
+      vehicles = await httpsGet('fleet-api.prd.eu.vn.cloud.tesla.com', '/api/1/vehicles', auth.access_token);
+      if (vehicles.response && vehicles.response.length) vehicles._endpoint = 'eu';
+    }
+
+    if (!vehicles.response || !vehicles.response.length) {
+      console.error('[TeslaKM] Aucun véhicule trouvé:', JSON.stringify(vehicles));
+      return { statusCode: 500, body: JSON.stringify({ error: 'No vehicles found', raw: vehicles }) };
     }
 
     const vehicle = vehicles.response[0];
     const vehicleId = vehicle.id_s;
-    console.log('[TeslaKM] Véhicule trouvé:', vehicle.display_name, '— ID:', vehicleId);
+    const isEU = vehicles._endpoint === 'eu';
+    const apiHost = isEU ? 'fleet-api.prd.eu.vn.cloud.tesla.com' : 'owner-api.teslamotors.com';
+    console.log('[TeslaKM] Véhicule trouvé:', vehicle.display_name, '— ID:', vehicleId, '— Host:', apiHost);
 
     // ---- 3. Réveil du véhicule si nécessaire ----
     if (vehicle.state !== 'online') {
       console.log('[TeslaKM] Véhicule en veille, réveil...');
-      await httpsPost('owner-api.teslamotors.com', `/api/1/vehicles/${vehicleId}/wake_up`, {}, {
+      await httpsPost(apiHost, `/api/1/vehicles/${vehicleId}/wake_up`, {}, {
         'Authorization': `Bearer ${auth.access_token}`,
         'User-Agent': 'TeslaKM/1.0'
       });
-      // Attendre 10 secondes
       await new Promise(r => setTimeout(r, 10000));
     }
 
     // ---- 4. Récupération des données véhicule ----
     console.log('[TeslaKM] Récupération des données...');
-    const data = await httpsGet(
-      'owner-api.teslamotors.com',
-      `/api/1/vehicles/${vehicleId}/vehicle_data`,
-      auth.access_token
-    );
+    const data = await httpsGet(apiHost, `/api/1/vehicles/${vehicleId}/vehicle_data`, auth.access_token);
 
     if (!data.response || !data.response.vehicle_state) {
       console.error('[TeslaKM] Données véhicule invalides:', JSON.stringify(data));
