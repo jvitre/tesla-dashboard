@@ -1,9 +1,5 @@
 [functions]
   directory = "netlify/functions"
 
-[[plugins]]
-  package = "@netlify/plugin-functions-install-deps"
-
-# Cron job — tous les jours à 19h00 UTC (= 21h00 heure de Paris en été)
 [functions."tesla-cron"]
   schedule = "0 19 * * *"
