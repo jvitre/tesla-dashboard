@@ -1073,7 +1073,8 @@ async function handleSession(session) {
   }
 
   // Force hide loading
-  overlay.style.display = 'none';
+  overlay.style.cssText = 'display:none!important;opacity:0;pointer-events:none;z-index:-1';
+  overlay.classList.add('hidden');
 }
 
 async function init() {
