@@ -162,7 +162,37 @@
 
   @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(3,1fr);}}
   @media(max-width:900px){.stats-grid{grid-template-columns:1fr 1fr;}}
-  @media(max-width:600px){.dual-prog{grid-template-columns:1fr;}.stats-grid{grid-template-columns:1fr 1fr;}.container{padding:20px 16px;}.brand-title{font-size:22px;}.s-val{font-size:24px;}}
+  @media(max-width:600px){
+    .dual-prog{grid-template-columns:1fr;}
+    .stats-grid{grid-template-columns:1fr 1fr;}
+    .container{padding:20px 16px;}
+    .brand-title{font-size:22px;}
+    .s-val{font-size:24px;}
+    /* Table → cartes sur mobile */
+    table thead { display:none; }
+    table, tbody, tr, td { display:block; width:100%; }
+    tr.row-hasdata, tr.row-future {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius:4px;
+      margin-bottom:10px;
+      padding:12px 14px;
+    }
+    tr.row-hasdata { background:rgba(74,158,255,0.04); border-color:rgba(74,158,255,0.15); }
+    tr.row-future { opacity:0.5; }
+    td { padding:3px 0; border:none; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    td::before {
+      content: attr(data-label);
+      font-family:'Space Mono',monospace;
+      font-size:9px;
+      letter-spacing:2px;
+      color:var(--muted);
+      text-transform:uppercase;
+      flex-shrink:0;
+    }
+    td:first-child { font-size:13px; font-weight:700; margin-bottom:4px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:6px; }
+    td:first-child::before { display:none; }
+  }
 </style>
 </head>
 <body>
@@ -790,10 +820,11 @@ function refresh() {
     var dCell = daysDiffE>0.5?'<span class="badge b-danger">'+absDaysE+' j débit</span>':daysDiffE<-0.5?'<span class="badge b-ok">'+absDaysE+' j crédit</span>':'<span class="badge b-neutral">équilibre</span>';
     var badge = ec>1000?'<span class="badge b-danger">EN AVANCE</span>':ec>300?'<span class="badge b-warn">ATTENTION</span>':ec<-300?'<span class="badge b-ok">ÉCONOMIE</span>':'<span class="badge b-ok">OK</span>';
     html += '<tr class="row-hasdata"><td style="font-weight:600">'+fmtDate(e.entry_date)+'</td>'
-      +'<td><span class="mono" style="font-weight:600">'+fmt(e.compteur_km)+' km</span></td>'
-      +'<td><span class="mono">'+fmt(th)+' km</span></td>'
-      +'<td><span class="mono" style="color:'+ecColor+'">'+ecSign+fmt(ec)+' km</span></td>'
-      +'<td>'+dCell+'</td><td>'+badge+'</td></tr>';
+      +'<td data-label="Compteur réel"><span class="mono" style="font-weight:600">'+fmt(e.compteur_km)+' km</span></td>'
+      +'<td data-label="Théorique"><span class="mono">'+fmt(th)+' km</span></td>'
+      +'<td data-label="Écart"><span class="mono" style="color:'+ecColor+'">'+ecSign+fmt(ec)+' km</span></td>'
+      +'<td data-label="Crédit/Débit">'+dCell+'</td>'
+      +'<td data-label="Statut">'+badge+'</td></tr>';
   });
 
   // Lignes futures par mois
@@ -807,9 +838,9 @@ function refresh() {
       var thF = daysF*kmPerDay;
       var mLabel = MFR[cursor.getMonth()]+' '+cursor.getFullYear();
       html += '<tr class="row-future"><td style="font-weight:600">'+mLabel+'</td>'
-        +'<td><span style="color:var(--muted);font-family:Space Mono,monospace;font-size:11px">--</span></td>'
-        +'<td><span class="mono">'+fmt(thF)+' km</span></td>'
-        +'<td>--</td><td>--</td><td><span class="badge b-future">FUTUR</span></td></tr>';
+        +'<td data-label="Compteur réel"><span style="color:var(--muted);font-family:Space Mono,monospace;font-size:11px">--</span></td>'
+        +'<td data-label="Théorique"><span class="mono">'+fmt(thF)+' km</span></td>'
+        +'<td data-label="Écart">--</td><td data-label="Crédit/Débit">--</td><td data-label="Statut"><span class="badge b-future">FUTUR</span></td></tr>';
       cursor.setMonth(cursor.getMonth()+1);
     }
   }
