@@ -10,6 +10,7 @@
 <title>Tesla Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
   :root {
     --bg:#0a0a0f;--surface:#111118;--card:#16161f;--border:#2a2a3a;
@@ -611,70 +612,74 @@ function toggleFuture() {
 // ============================================================
 function updateChart(c, endDate, totalKm) {
   var kmPerDay = c.kmYear / 365.25;
-  var today = new Date();
 
-  // Points réels
-  var realLabels = [], realData = [];
-  entries.forEach(function(e){
-    realLabels.push(fmtDate(e.entry_date));
-    realData.push(e.compteur_km);
+  // Points réels — dates ISO
+  var realData = entries.map(function(e){
+    return { x: e.entry_date, y: e.compteur_km };
   });
 
-  // Ligne théorique — du début à la fin du contrat
-  var thLabels = [], thData = [];
+  // Ligne théorique — du début à la fin du contrat, ~30 points
+  var thData = [];
+  var step = Math.ceil((endDate - c.start) / 86400000 / 30);
   var cursor = new Date(c.start);
-  var step = Math.ceil((endDate - c.start) / 86400000 / 24); // ~24 points
   while (cursor <= endDate) {
     var days = (cursor - c.start) / 86400000;
-    thLabels.push(fmtDate(cursor));
-    thData.push(Math.round(days * kmPerDay));
+    thData.push({ x: dateKey(cursor), y: Math.round(days * kmPerDay) });
     cursor = new Date(cursor.getTime() + step * 86400000);
   }
+  // Assure que le dernier point est exactement la fin du contrat
+  thData.push({ x: dateKey(endDate), y: totalKm });
 
   // Projection depuis dernier point réel
-  var projLabels = [], projData = [];
+  var projData = [];
   if (entries.length >= 2) {
     var last = entries[entries.length - 1];
     var lastDate = parseDate(last.entry_date);
     var elapsedDays = (lastDate - c.start) / 86400000;
     var realMonthly = last.compteur_km / (elapsedDays / 30.4375);
     var projCursor = new Date(lastDate);
-    projLabels.push(fmtDate(projCursor));
-    projData.push(last.compteur_km);
+    projData.push({ x: dateKey(projCursor), y: last.compteur_km });
     while (projCursor <= endDate) {
       projCursor = new Date(projCursor.getTime() + step * 86400000);
       var addedDays = (projCursor - lastDate) / 86400000;
-      projLabels.push(fmtDate(projCursor));
-      projData.push(Math.round(last.compteur_km + (addedDays / 30.4375) * realMonthly));
+      projData.push({ x: dateKey(projCursor), y: Math.round(last.compteur_km + (addedDays / 30.4375) * realMonthly) });
     }
   }
 
   var ctx = document.getElementById('kmChart').getContext('2d');
   if (kmChart) kmChart.destroy();
   kmChart = new Chart(ctx, {
-    type:'line',
-    data:{
-      datasets:[
-        { label:'Compteur réel', data:realLabels.map(function(l,i){ return {x:l,y:realData[i]}; }),
-          borderColor:'#00e5a0',backgroundColor:'rgba(0,229,160,0.08)',borderWidth:2,pointRadius:5,pointBackgroundColor:'#00e5a0',fill:true },
-        { label:'Théorique contrat', data:thLabels.map(function(l,i){ return {x:l,y:thData[i]}; }),
-          borderColor:'#4a9eff',backgroundColor:'transparent',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false },
-        { label:'Projection', data:projLabels.map(function(l,i){ return {x:l,y:projData[i]}; }),
-          borderColor:'#a855f7',backgroundColor:'rgba(168,85,247,0.05)',borderWidth:1.5,borderDash:[3,3],pointRadius:0,fill:true }
+    type: 'line',
+    data: {
+      datasets: [
+        { label:'Compteur réel', data:realData,
+          borderColor:'#00e5a0', backgroundColor:'rgba(0,229,160,0.08)', borderWidth:2, pointRadius:5, pointBackgroundColor:'#00e5a0', fill:true },
+        { label:'Théorique contrat', data:thData,
+          borderColor:'#4a9eff', backgroundColor:'transparent', borderWidth:1.5, borderDash:[6,4], pointRadius:0, fill:false },
+        { label:'Projection', data:projData,
+          borderColor:'#a855f7', backgroundColor:'rgba(168,85,247,0.05)', borderWidth:1.5, borderDash:[3,3], pointRadius:0, fill:true }
       ]
     },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
       plugins:{
-        legend:{ labels:{ color:'#6b6b80',font:{family:"'Space Mono', monospace",size:10},boxWidth:12 }},
-        tooltip:{ backgroundColor:'#16161f',borderColor:'#2a2a3a',borderWidth:1,titleColor:'#e8e8f0',bodyColor:'#6b6b80',
-          titleFont:{family:"'Space Mono', monospace",size:11},bodyFont:{family:"'Space Mono', monospace",size:11},
+        legend:{ labels:{ color:'#6b6b80', font:{family:"'Space Mono', monospace", size:10}, boxWidth:12 }},
+        tooltip:{ backgroundColor:'#16161f', borderColor:'#2a2a3a', borderWidth:1, titleColor:'#e8e8f0', bodyColor:'#6b6b80',
+          titleFont:{family:"'Space Mono', monospace", size:11}, bodyFont:{family:"'Space Mono', monospace", size:11},
           callbacks:{ label:function(ctx){ return ctx.raw===null?null:ctx.dataset.label+' : '+fmt(ctx.raw.y)+' km'; }}}
       },
       scales:{
-        x:{ type:'category',ticks:{color:'#6b6b80',font:{family:"'Space Mono', monospace",size:9},maxTicksLimit:12},grid:{color:'rgba(42,42,58,0.6)'}},
-        y:{ ticks:{color:'#6b6b80',font:{family:"'Space Mono', monospace",size:9},callback:function(v){return fmt(v)+' km';}},grid:{color:'rgba(42,42,58,0.6)'}}
+        x:{
+          type: 'time',
+          time:{ unit:'month', tooltipFormat:'dd MMM yyyy', displayFormats:{ month:'MMM yyyy' } },
+          ticks:{ color:'#6b6b80', font:{family:"'Space Mono', monospace", size:9}, maxTicksLimit:12 },
+          grid:{ color:'rgba(42,42,58,0.6)' }
+        },
+        y:{
+          ticks:{ color:'#6b6b80', font:{family:"'Space Mono', monospace", size:9}, callback:function(v){ return fmt(v)+' km'; } },
+          grid:{ color:'rgba(42,42,58,0.6)' }
+        }
       }
     }
   });
